@@ -1,5 +1,3 @@
-gunicorn
-Flask
-Jinja2
-Werkzeug
-slackclient
+gunicorn>=19.9
+Flask>=1.0
+slackclient>=1.3
