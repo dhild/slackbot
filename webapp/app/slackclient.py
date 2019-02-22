@@ -21,6 +21,5 @@ class SlackAPI:
         self.bot_client = SlackClient(self.bot_token)
 
     def is_valid_request(self, req):
-        if req.get_json()['token'] == self.verification_token:
-            return True
-        return False
+        json = req.get_json()
+        return json['token'] == self.verification_token
