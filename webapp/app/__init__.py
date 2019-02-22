@@ -28,7 +28,7 @@ def create_app(config=None):
         if req['type'] == 'app_rate_limited':
             app.logger.error('Rate limited at %d', req['minute_rate_limited'])
             return Response(), 200
-        app.logger.warning('Failed to process message (type=%s)', req['type'])
+        app.logger.error('Unknown message type, this is being dropped on the floor (type=%s)', req['type'])
         return Response(), 200
 
     return app
