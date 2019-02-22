@@ -16,7 +16,7 @@ def create_app():
 
     @app.route('/slack/event', methods=['POST'])
     def slack_event():
-        if not request.is_json():
+        if not request.is_json:
             return Response(), 405
         if not slack.is_valid_request(request):
             return Response(), 401
