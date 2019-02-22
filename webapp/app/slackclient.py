@@ -1,17 +1,15 @@
-def _default_config():
-    import os
-    return {
-        'SLACK_VERIFICATION_TOKEN': os.environ.get('SLACK_VERIFICATION_TOKEN'),
-        'SLACK_APP_TOKEN': os.environ.get('SLACK_APP_TOKEN'),
-        'SLACK_BOT_TOKEN': os.environ.get('SLACK_BOT_TOKEN'),
-    }
+import os
 
 
-default_config = _default_config()
+class SlackConfig:
+    SLACK_VERIFICATION_TOKEN = os.environ.get('SLACK_VERIFICATION_TOKEN')
+    SLACK_APP_TOKEN = os.environ.get('SLACK_APP_TOKEN')
+    SLACK_BOT_TOKEN = os.environ.get('SLACK_BOT_TOKEN')
 
 
 class SlackAPI:
     def __init__(self, config):
+        self.config = config
         self.verification_token = config.get('SLACK_VERIFICATION_TOKEN')
         self.app_token = config.get('SLACK_APP_TOKEN')
         self.bot_token = config.get('SLACK_BOT_TOKEN')
@@ -22,4 +20,4 @@ class SlackAPI:
 
     def is_valid_request(self, req):
         json = req.get_json()
-        return json['token'] == self.verification_token
+        return json['token'] == self.config.get('SLACK_VERIFICATION_TOKEN')

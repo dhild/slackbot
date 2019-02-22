@@ -2,6 +2,10 @@ from app import create_app
 import unittest
 
 
+class TestConfig:
+    SLACK_VERIFICATION_TOKEN = 'GOOD TOKEN'
+
+
 class AppTestCase(unittest.TestCase):
 
     def test_root_text(self):
@@ -11,10 +15,10 @@ class AppTestCase(unittest.TestCase):
         assert b'Hello world!' in response.data
 
     def test_slack_event_url_verification(self):
-        app = create_app()
+        app = create_app(TestConfig)
         tester = app.test_client(self)
         response = tester.post('/slack/event', json={
-            'token': app.config.get('SLACK_VERIFICATION_TOKEN'),
+            'token': 'GOOD TOKEN',
             'type': 'url_verification',
             'challenge': 'This is the challenge text',
         })
@@ -23,7 +27,7 @@ class AppTestCase(unittest.TestCase):
         assert 'This is the challenge text' == json_data['challenge']
 
     def test_slack_event_url_verification_auth_fail(self):
-        app = create_app()
+        app = create_app(TestConfig)
         tester = app.test_client(self)
         response = tester.post('/slack/event', json={
             'token': 'BAD TOKEN',

@@ -1,12 +1,14 @@
 from flask import Flask, request, Response, jsonify
-from app.slackclient import SlackAPI
+from app.slackclient import SlackAPI, SlackConfig
 
 
-def create_app():
+def create_app(config=None):
     app = Flask('slackbot')
 
-    from app.slackclient import default_config
-    app.config.from_object(default_config)
+    app.config.from_object(SlackConfig)
+
+    if config is not None:
+        app.config.from_object(config)
 
     slack = SlackAPI(app.config)
 
