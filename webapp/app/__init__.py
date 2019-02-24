@@ -1,34 +1,44 @@
-from flask import Flask, request, Response, jsonify
-from app.slackclient import SlackAPI, SlackConfig
+from flask import Flask, Response, request
+from slackeventsapi import SlackEventAdapter
+from slackclient import SlackClient
+from app.config import configure_app
+from app.twodegrees import two_degrees
+import json
 
 
-def create_app(config=None):
+def create_app(custom_config=None):
     app = Flask('slackbot')
 
-    app.config.from_object(SlackConfig)
+    configure_app(app)
 
-    if config is not None:
-        app.config.from_object(config)
+    if custom_config is not None:
+        app.config.from_object(custom_config)
 
-    slack = SlackAPI(app.config)
+    bot_api = SlackClient(app.config.get('SLACK_BOT_TOKEN'))
 
     @app.route('/', methods=['GET'])
     def hello():
-        return 'Hello world!'
+        return 'Hello there!'
 
-    @app.route('/slack/event', methods=['POST'])
-    def slack_event():
-        if not request.is_json:
-            return Response(), 405
-        if not slack.is_valid_request(request):
-            return Response(), 401
-        req = request.get_json()
-        if req['type'] == 'url_verification':
-            return jsonify(challenge=req['challenge'])
-        if req['type'] == 'app_rate_limited':
-            app.logger.error('Rate limited at %d', req['minute_rate_limited'])
-            return Response(), 200
-        app.logger.error('Unknown message type, this is being dropped on the floor (type=%s)', req['type'])
+    @app.route('/slack/events', methods=['GET', 'POST'])
+    def what():
+        data = request.data.decode('utf-8')
+        event_data = json.loads(data)
+        print("INFO: callback: " + event_data['event']['type'])
+        app.logger.info('raw data: ' + data)
         return Response(), 200
 
+    slack_events_adapter = SlackEventAdapter(app.config.get('SLACK_SIGNING_SECRET'), endpoint='/slack/event',
+                                             server=app)
+
+    @slack_events_adapter.on('message')
+    async def message_channels(event_data):
+        print("INFO: callback: " + event_data['event']['type'])
+        two_degrees(bot_api)(event_data)
+
+    @slack_events_adapter.on('error')
+    def error_handler(err):
+        app.logger.error('slack api error: ' + str(err))
+
+    print("Starting slackbot app")
     return app
