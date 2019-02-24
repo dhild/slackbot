@@ -20,20 +20,11 @@ def create_app(custom_config=None):
     def hello():
         return 'Hello there!'
 
-    @app.route('/slack/events', methods=['GET', 'POST'])
-    def what():
-        data = request.data.decode('utf-8')
-        event_data = json.loads(data)
-        print("INFO: callback: " + event_data['event']['type'])
-        app.logger.info('raw data: ' + data)
-        return Response(), 200
-
-    slack_events_adapter = SlackEventAdapter(app.config.get('SLACK_SIGNING_SECRET'), endpoint='/slack/event',
-                                             server=app)
+    slack_events_adapter = SlackEventAdapter(app.config.get('SLACK_SIGNING_SECRET'), server=app)
 
     @slack_events_adapter.on('message')
     async def message_channels(event_data):
-        print("INFO: callback: " + event_data['event']['type'])
+        print("INFO: raw message: " + str(event_data))
         two_degrees(bot_api)(event_data)
 
     @slack_events_adapter.on('error')
