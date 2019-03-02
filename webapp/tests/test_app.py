@@ -3,7 +3,9 @@ import unittest
 
 
 class TestConfig:
-    SLACK_VERIFICATION_TOKEN = 'GOOD TOKEN'
+    SLACK_SIGNING_SECRET = 'Test secret'
+    SLACK_APP_TOKEN = 'Test app token'
+    SLACK_BOT_TOKEN = 'Test bot token'
 
 
 class AppTestCase(unittest.TestCase):
@@ -18,7 +20,7 @@ class AppTestCase(unittest.TestCase):
         app = create_app(TestConfig)
         tester = app.test_client(self)
         response = tester.post('/slack/event', json={
-            'token': 'GOOD TOKEN',
+            'token': TestConfig.SLACK_SIGNING_SECRET,
             'type': 'url_verification',
             'challenge': 'This is the challenge text',
         })
@@ -30,7 +32,7 @@ class AppTestCase(unittest.TestCase):
         app = create_app(TestConfig)
         tester = app.test_client(self)
         response = tester.post('/slack/event', json={
-            'token': 'BAD TOKEN',
+            'token': TestConfig.SLACK_SIGNING_SECRET + "BAD",
             'type': 'url_verification',
             'challenge': 'This is the challenge text',
         })

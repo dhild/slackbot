@@ -1,33 +1,36 @@
-class TwoDegrees:
+import spacy
+
+
+class MessageProcessor:
     def __init__(self, slack):
         self.slack = slack
-        self.famous_people = [
-            "paris hilton",
-            "steve buscemi",
-        ]
-        self.places = [
-            "on the ferry",
-            "at the pub",
-            "while touring Europe"
-        ]
+        self.find_person = PersonFinder()
+        self.casual_reference = CasualReferencer()
 
     def process(self, event_data):
         message = event_data["event"]
         if message.get("subtype") is None:
-            text = message.get("text").lower()
-            person = self.get_famous_person(text)
+            text = message.get("text")
+            person = self.find_person(text)
             if person is None:
                 return
-            place = self.get_location()
+            text = self.casual_reference(person)
             channel = message["channel"]
-            message = "I once met %s at %s" % person, place
-            self.slack.api_call("chat.postMessage", channel=channel, text=message)
+            self.slack.api_call("chat.postMessage", channel=channel, text=text)
 
-    def get_famous_person(self, text):
-        for person in self.famous_people:
-            if person in text:
-                return person
-        return None
 
-    def get_location(self):
-        return self.places[2]
+class CasualReferencer:
+    def __call__(self, *args, **kwargs):
+        return "You know, I actually met %s at a party once" % args[0]
+
+
+class PersonFinder:
+    def __init__(self):
+        self.nlp = spacy.load('en')
+
+    def __call__(self, *args, **kwargs):
+        doc = self.nlp(*args, **kwargs)
+        for ent in doc.ents:
+            print('Discovered %s: %s' % (ent.label_, ent.text))
+            if ent.label_ == 'PERSON':
+                return ent.text

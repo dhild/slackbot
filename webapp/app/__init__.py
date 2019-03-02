@@ -2,7 +2,7 @@ from flask import Flask
 from slackeventsapi import SlackEventAdapter
 from slackclient import SlackClient
 from app.config import configure_app
-from app.twodegrees import TwoDegrees
+import app.twodegrees
 import queue
 import threading
 
@@ -17,7 +17,7 @@ def create_app(custom_config=None):
         app.config.from_object(custom_config)
 
     bot_api = SlackClient(app.config.get('SLACK_BOT_TOKEN'))
-    two_degrees = TwoDegrees(bot_api)
+    two_degrees = twodegrees.MessageProcessor(bot_api)
 
     @app.route('/', methods=['GET'])
     def hello():

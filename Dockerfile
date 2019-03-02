@@ -2,11 +2,11 @@
 FROM python:3.7-alpine
 
 # Install python and pip
-RUN apk add --no-cache --update bash && pip3 install --upgrade pip
+RUN apk add --no-cache --update bash musl-dev linux-headers g++ && pip3 install --upgrade pip
 ADD ./webapp/requirements.txt /tmp/requirements.txt
 
 # Install dependencies
-RUN pip3 install --no-cache-dir -q -r /tmp/requirements.txt
+RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
 # Add our code
 ADD ./webapp /opt/webapp/
