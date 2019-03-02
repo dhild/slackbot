@@ -7,6 +7,7 @@ ADD ./webapp/requirements.txt /tmp/requirements.txt
 
 # Install dependencies
 RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
+RUN python -m spacy download en
 
 # Add our code
 ADD ./webapp /opt/webapp/
