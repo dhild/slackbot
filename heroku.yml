@@ -1,3 +1,10 @@
+setup:
+  addons:
+  - plan: heroku-postgresql
+    as: DATABASE
+  config:
+    PYTHONUNBUFFERED: True
+
 build:
   docker:
     web: Dockerfile
