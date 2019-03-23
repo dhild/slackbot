@@ -1,6 +1,7 @@
 import app.wumpus.db as db
 import app.wumpus.ui as ui
 import random
+from datetime import datetime
 
 
 class Processor(object):
@@ -30,22 +31,48 @@ class Processor(object):
 
 def hunt_the_wumpus(user_id, action_id):
     with db.session_scope() as session:
-        game = db.find_or_create_game(session, user_id)
+        game = db.find_game(session, user_id)
         if game.state is None:
-            setup_game(game)
-            return ui.choice("Show Instructions?", ui.Option("Yes", "wumpus_show_instructions"),
-                             ui.Option("No", "wumpus_skip_instructions"))
+            new_game(session, user_id)
 
-        if action_id == "wumpus_show_instructions":
-            pass
+        message = ""
+        if action_id == 'wumpus_show_instructions':
+            message = instructions
+
+        message += get_hazards_and_location(game)
+        return ui.choice(message, ui.Option("Shoot", "wumpus_shoot"), ui.Option("Move", "wumpus_move"))
 
 
-def setup_game(game):
+def new_game(session, user_id):
+    game = db.Game(user_id=user_id, start_time=datetime.now(), arrows=5)
+    game.wumpus_location = random_cave()
+    game.bats = [db.Bat(location=random_cave()), db.Bat(location=random_cave())]
+    game.pits = [db.Pit(location=random_cave()), db.Pit(location=random_cave())]
     while True:
         game.player_location = random_cave()
-        game.wumpus_location = random_cave()
         if game.player_location != game.wumpus_location:
             break
+    session.add(game)
+
+
+def get_hazards_and_location(game):
+    wumpus_nearby = False
+    pit_nearby = False
+    bats_nearby = False
+    for x in tunnel_connections[game.player_location]:
+        wumpus_nearby |= game.wumpus_location == x
+        for p in game.pits:
+            pit_nearby |= p.location == x
+        for b in game.bats:
+            bats_nearby |= b.location == x
+    messages = "You are in room %d" % game.player_location
+    if wumpus_nearby:
+        messages += "\nI smell a wumpus!"
+    if pit_nearby:
+        messages += "\nI feel a draft"
+    if bats_nearby:
+        messages += "\nBats nearby!"
+    return messages
 
 
 def random_cave():
@@ -76,3 +103,54 @@ tunnel_connections = {
     19: [16, 17, 20],
     20: [15, 18, 19],
 }
+
+instructions = """
+WELCOME TO 'HUNT THE WUMPUS'
+
+THE WUMPUS LIVES IN A CAVE OF 20 ROOMS: EACH ROOM HAS 3 TUNNELS LEADING TO OTHER
+ROOMS. (LOOK AT A DODECAHEDRON TO SEE HOW THIS WORKS. IF YOU DON'T KNOW WHAT A
+DODECAHEDRON IS, ASK SOMEONE)
+
+***
+HAZARDS:
+
+BOTTOMLESS PITS - TWO ROOMS HAVE BOTTOMLESS PITS IN THEM
+IF YOU GO THERE: YOU FALL INTO THE PIT (& LOSE!)
+
+SUPER BATS  - TWO OTHER ROOMS HAVE SUPER BATS. IF YOU GO THERE, A BAT GRABS YOU
+AND TAKES YOU TO SOME OTHER ROOM AT RANDOM. (WHICH MIGHT BE TROUBLESOME)
+
+WUMPUS:
+
+THE WUMPUS IS NOT BOTHERED BY THE HAZARDS (HE HAS SUCKER FEET AND IS TOO BIG FOR
+A BAT TO LIFT). USUALLY HE IS ASLEEP. TWO THINGS WAKE HIM UP: YOUR ENTERING HIS
+ROOM OR YOUR SHOOTING AN ARROW.
+
+IF THE WUMPUS WAKES, HE MOVES (P=0.75) ONE ROOM OR STAYS STILL (P=0.25). AFTER
+THAT, IF HE IS WHERE YOU ARE, HE EATS YOU UP (& YOU LOSE!)
+
+YOU:
+
+EACH TURN YOU MAY MOVE OR SHOOT A CROOKED ARROW 
+MOVING: YOU CAN GO ONE ROOM (THRU ONE TUNNEL)
+ARROWS: YOU HAVE 5 ARROWS. YOU LOSE WHEN YOU RUN OUT.
+
+EACH ARROW CAN GO FROM 1 TO 5 ROOMS: YOU AIM BY TELLING THE COMPUTER THE ROOMS
+YOU WANT THE ARROW TO GO TO. IF THE ARROW CAN'T GO THAT WAY (IE NO TUNNEL) IT
+MOVES AT RANDOM TO THE NEXT ROOM.
+
+IF THE ARROW HITS THE WUMPUS: YOU WIN.
+
+IF THE ARROW HITS YOU: YOU LOSE.
+
+WARNINGS:
+
+WHEN YOU ARE ONE ROOM AWAY FROM WUMPUS OP HAZARD, THE COMPUTER SAYS:
+
+WUMPUS - 'I SMELL A WUMPUS'
+
+BAT - 'BATS NEARBY'
+
+PIT - 'I FEEL A DRAFT'
+
+"""

@@ -22,6 +22,22 @@ def choice(message, *args):
             "type": "section",
             "text": {
                 "type": "mrkdwn",
+                "text": "Hunt the Wumpus!"
+            },
+            "accessory": {
+                "type": "button",
+                "text": {
+                    "type": "plain_text",
+                    "text": "Show Instructions",
+                    "emoji": False
+                },
+                "value": "wumpus_show_instructions",
+                "action_id": "wumpus_show_instructions"
+            }
+        }, {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
                 "text": message
             }
         }, {

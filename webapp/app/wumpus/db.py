@@ -1,8 +1,7 @@
 import os
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import sessionmaker, relationship, selectinload
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey
-from datetime import datetime
 from contextlib import contextmanager
 
 DATABASE_URL = os.environ['DATABASE_URL']
@@ -20,12 +19,44 @@ class Game(Base):
     state = Column(String)
     player_location = Column(Integer)
     wumpus_location = Column(Integer)
+    arrows = Column(Integer)
 
     def __repr__(self):
         return "<Game(user='%s', state='%s', player_location='%s', wumpus_location='%s', start_time='%s'," \
                " end_time='%s')>" % (
                    self.user_id, self.state, self.player_location, self.wumpus_location, self.start_time, self.end_time)
 
+
+class Pit(Base):
+    __tablename__ = "pits"
+
+    id = Column(Integer, primary_key=True)
+    game_id = Column(Integer, ForeignKey("games.id"))
+    location = Column(Integer)
+
+    game = relationship("Game", back_populates="pits")
+
+    def __repr__(self):
+        return "<Pit(location='%s')>" % self.location
+
+
+Game.pits = relationship("Pit", order_by=Pit.id, back_populates="game")
+
+
+class Bat(Base):
+    __tablename__ = "bats"
+
+    id = Column(Integer, primary_key=True)
+    game_id = Column(Integer, ForeignKey("games.id"))
+    location = Column(Integer)
+
+    game = relationship("Game", back_populates="bats")
+
+    def __repr__(self):
+        return "<Bat(location='%s')>" % self.location
+
+
+Game.bats = relationship("Bat", order_by=Bat.id, back_populates="game")
 
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
@@ -45,9 +76,9 @@ def session_scope():
         session.close()
 
 
-def find_or_create_game(session, user_id):
-    game = session.query(Game).filter(Game.user_id == user_id).one_or_none()
-    if game is None:
-        game = Game(user_id=user_id, start_time=datetime.now())
-        session.add(game)
-    return game
+def find_game(session, user_id):
+    return session.query(Game). \
+        options(selectinload(Game.pits)). \
+        options(selectinload(Game.bats)). \
+        filter(Game.user_id == user_id). \
+        one_or_none()
