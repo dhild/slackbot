@@ -7,6 +7,8 @@ RUN apk add --no-cache --update bash musl-dev linux-headers g++ && pip3 install 
 # Install spacy separately because it takes forever:
 RUN pip3 install --no-cache-dir spacy>=2.0.18 && python -m spacy download en
 
+RUN apk add --no-cache --update postgresql-dev
+
 # Now install the rest of the dependencies:
 ADD ./webapp/requirements.txt /tmp/requirements.txt
 RUN pip3 install --no-cache-dir -r /tmp/requirements.txt

@@ -18,18 +18,24 @@ class Processor(object):
                 response = hunt_the_wumpus(user_id, '')
                 self.slack.api_call("chat.postMessage", channel=channel, **response)
 
-    def interaction_handler(self, data):
-        if data["type"] == "block_actions":
-            channel = data["channel"]["id"]
-            timestamp = data["message"]["ts"]
-            user_id = data["user"]["id"]
-            action_id = data["actions"][0]["action_id"]
-            response = hunt_the_wumpus(user_id, action_id)
+    def interaction_handler(self, payload):
+        if payload["type"] == "block_actions":
+            channel = payload["channel"]["id"]
+            timestamp = payload["message"]["ts"]
+            user_id = payload["user"]["id"]
+            action_id = payload["actions"][0]["action_id"]
+            action_value = payload["actions"][0]["value"]
+
+            if not action_id.startswith("wumpus_"):
+                print("Bad action id: " + action_id)
+                return
+
+            response = hunt_the_wumpus(user_id, action_id, action_value)
             if response is not None:
                 self.slack.api_call("chat.update", channel=channel, ts=timestamp, **response)
 
 
-def hunt_the_wumpus(user_id, action_id):
+def hunt_the_wumpus(user_id, action_id, action_value):
     with db.session_scope() as session:
         game = db.find_game(session, user_id)
         if game.state is None:
@@ -39,44 +45,57 @@ def hunt_the_wumpus(user_id, action_id):
         if action_id == 'wumpus_show_instructions':
             message = instructions
 
+        for p in game.pits:
+            if p.location == game.player_location:
+                return ui.choice("YYYIIIIEEEE... You fell into a pit!")
+
+        for p in game.bats:
+            if p.location == game.player_location:
+                message += "A bat has snatched you up and dropped you in a random cave!\n"
+                game.player_location = random_cave()
+
         message += get_hazards_and_location(game)
         return ui.choice(message, ui.Option("Shoot", "wumpus_shoot"), ui.Option("Move", "wumpus_move"))
 
 
 def new_game(session, user_id):
     game = db.Game(user_id=user_id, start_time=datetime.now(), arrows=5)
-    game.wumpus_location = random_cave()
-    game.bats = [db.Bat(location=random_cave()), db.Bat(location=random_cave())]
-    game.pits = [db.Pit(location=random_cave()), db.Pit(location=random_cave())]
-    while True:
-        game.player_location = random_cave()
-        if game.player_location != game.wumpus_location:
-            break
+    caves = list(range(1, 20))
+    game.wumpus_location = random_cave(caves)
+    game.player_location = random_cave(caves)
+    game.bats = [db.Bat(location=random_cave(caves)), db.Bat(location=random_cave(caves))]
+    game.pits = [db.Pit(location=random_cave(caves)), db.Pit(location=random_cave(caves))]
     session.add(game)
+
+
+def random_cave(caves=None):
+    if caves is None:
+        return random_cave(list(range(1, 20)))
+    cave = random.choice(caves)
+    caves.remove(cave)
+    return cave
 
 
 def get_hazards_and_location(game):
     wumpus_nearby = False
     pit_nearby = False
     bats_nearby = False
-    for x in tunnel_connections[game.player_location]:
+    adjoining = tunnel_connections[game.player_location]
+    for x in adjoining:
         wumpus_nearby |= game.wumpus_location == x
         for p in game.pits:
             pit_nearby |= p.location == x
         for b in game.bats:
             bats_nearby |= b.location == x
     messages = "You are in room %d" % game.player_location
+    messages += "\nTunnels lead to %d, %d, %d" % (adjoining[0], adjoining[1], adjoining[2])
     if wumpus_nearby:
-        messages += "\nI smell a wumpus!"
+        messages += "\nI smell a Wumpus!"
     if pit_nearby:
         messages += "\nI feel a draft"
     if bats_nearby:
         messages += "\nBats nearby!"
     return messages
-
-
-def random_cave():
-    return random.randint(1, 20)
 
 
 # In traditional Hunt the Wumpus, the playing area is a dodecahedron. If you squash it, and label each of the vertices,

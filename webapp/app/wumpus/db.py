@@ -16,7 +16,7 @@ class Game(Base):
     user_id = Column(String)
     start_time = Column(DateTime)
     end_time = Column(DateTime)
-    state = Column(String)
+    state = Column(Integer)
     player_location = Column(Integer)
     wumpus_location = Column(Integer)
     arrows = Column(Integer)
