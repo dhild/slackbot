@@ -15,7 +15,8 @@ class Processor(object):
             if "hunt the wumpus" in text.lower():
                 user_id = message.get("user")
                 channel = message["channel"]
-                response = hunt_the_wumpus(user_id, '')
+                print("Starting to hunt the wumpus for user '%s' in channel '%s'" % (user_id, channel))
+                response = hunt_the_wumpus(user_id, '', '')
                 self.slack.api_call("chat.postMessage", channel=channel, **response)
 
     def interaction_handler(self, payload):
@@ -39,7 +40,7 @@ def hunt_the_wumpus(user_id, action_id, action_value):
     with db.session_scope() as session:
         game = db.find_game(session, user_id)
         if game.state is None:
-            new_game(session, user_id)
+            game = new_game(session, user_id)
 
         message = ""
         if action_id == 'wumpus_show_instructions':
@@ -66,6 +67,7 @@ def new_game(session, user_id):
     game.bats = [db.Bat(location=random_cave(caves)), db.Bat(location=random_cave(caves))]
     game.pits = [db.Pit(location=random_cave(caves)), db.Pit(location=random_cave(caves))]
     session.add(game)
+    return game
 
 
 def random_cave(caves=None):
