@@ -1,0 +1,27 @@
+{
+  "name": "Comedy Bot",
+  "stack": "container",
+  "success_url": "/",
+  "env": {
+    "SLACK_API_APP_ID": {
+      "description": "Value of slack's API app id",
+      "required": true
+    },
+    "SLACK_APP_TOKEN": {
+      "description": "Value of slack's signing secret",
+      "required": true
+    },
+    "SLACK_BOT_TOKEN": {
+      "description": "Value of slack's signing secret",
+      "required": true
+    },
+    "SLACK_SIGNING_SECRET": {
+      "description": "Value of slack's signing secret",
+      "required": true
+    },
+    "PYTHONUNBUFFERED": {
+      "description": "When True, runs python in unbuffered mode (useful for logging)",
+      "value": "True"
+    }
+  }
+}
