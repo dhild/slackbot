@@ -3,6 +3,7 @@ from sqlalchemy.orm import sessionmaker, relationship, selectinload
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey
 from contextlib import contextmanager
+import app.wumpus.hunt
 
 DATABASE_URL = os.environ['DATABASE_URL']
 engine = create_engine(DATABASE_URL, connect_args={'sslmode': 'require'})
@@ -15,16 +16,14 @@ class Game(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(String)
     start_time = Column(DateTime)
-    end_time = Column(DateTime)
     state = Column(Integer)
     player_location = Column(Integer)
     wumpus_location = Column(Integer)
     arrows = Column(Integer)
 
     def __repr__(self):
-        return "<Game(user='%s', state='%s', player_location='%s', wumpus_location='%s', start_time='%s'," \
-               " end_time='%s')>" % (
-                   self.user_id, self.state, self.player_location, self.wumpus_location, self.start_time, self.end_time)
+        return "<Game(user='%s', state='%s', player_location='%s', wumpus_location='%s')>" % (
+            self.user_id, self.state, self.player_location, self.wumpus_location)
 
 
 class Pit(Base):
@@ -40,7 +39,7 @@ class Pit(Base):
         return "<Pit(location='%s')>" % self.location
 
 
-Game.pits = relationship("Pit", order_by=Pit.id, back_populates="game")
+Game.pits = relationship("Pit", order_by=Pit.id, back_populates="game", cascade="all, delete, delete-orphan")
 
 
 class Bat(Base):
@@ -56,7 +55,7 @@ class Bat(Base):
         return "<Bat(location='%s')>" % self.location
 
 
-Game.bats = relationship("Bat", order_by=Bat.id, back_populates="game")
+Game.bats = relationship("Bat", order_by=Bat.id, back_populates="game", cascade="all, delete, delete-orphan")
 
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
@@ -77,8 +76,33 @@ def session_scope():
 
 
 def find_game(session, user_id):
-    return session.query(Game). \
+    game = session.query(Game). \
         options(selectinload(Game.pits)). \
         options(selectinload(Game.bats)). \
         filter(Game.user_id == user_id). \
         one_or_none()
+    if game is None:
+        return app.wumpus.hunt.new_game(user_id)
+    bat_locations = map(lambda x: x.location, game.bats)
+    pit_locations = map(lambda x: x.location, game.pits)
+    wh = app.wumpus.hunt.Game(username=user_id, player_location=game.player_location,
+                              wumpus_location=game.wumpus_location, bat_locations=bat_locations,
+                              pit_locations=pit_locations, arrows=game.arrows)
+    wh.db_game = game
+    return wh
+
+
+def save_game(session, game):
+    if not game.should_continue():
+        session.delete(game.db_game)
+        return
+
+    if not hasattr(game, 'db_game'):
+        g = Game(user_id=game.username)
+        session.add(g)
+        game.db_game = g
+
+    game.db_game.arrows = game.arrows
+    game.db_game.player_location = game.player_location
+    game.db_game.wumpus_location = game.wumpus_location
+    game.db_game.arrows = game.arrows
