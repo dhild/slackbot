@@ -14,7 +14,6 @@ class Game(object):
         self.pit_locations = pit_locations
         self.arrows = arrows
         self.messages = []
-        self._continue_messages()
 
         class GameLoggerAdapter(logging.LoggerAdapter):
             def process(self, msg, kwargs):
@@ -22,24 +21,26 @@ class Game(object):
 
         self.logger = GameLoggerAdapter(logging.getLogger(__name__), {'username': username})
 
-    def _continue_messages(self):
-        for x in tunnel_connections[self.player_location]:
-            if x == self.wumpus_location:
-                self.messages.append("You smell a Wumpus!")
-            if x in self.pit_locations:
-                self.messages.append("You feel a draft")
-            if x in self.bat_locations:
-                self.messages.append("You can hear bats nearby!")
-        self.messages.append("You are in room %d" % self.player_location)
-        self.messages.append("Tunnels lead to %d, %d, %d" % (
-            tunnel_connections[self.player_location][0], tunnel_connections[self.player_location][1],
-            tunnel_connections[self.player_location][2]))
+    def presentation_messages(self):
+        if self.should_continue():
+            for x in tunnel_connections[self.player_location]:
+                if x == self.wumpus_location:
+                    self.messages.append("You smell a Wumpus!")
+                if x in self.pit_locations:
+                    self.messages.append("You feel a draft")
+                if x in self.bat_locations:
+                    self.messages.append("You can hear bats nearby!")
+            self.messages.append("You are in cave %d" % self.player_location)
+            self.messages.append("Tunnels lead to %d, %d, %d" % (
+                tunnel_connections[self.player_location][0], tunnel_connections[self.player_location][1],
+                tunnel_connections[self.player_location][2]))
+        return self.messages
 
     def should_continue(self):
         return Game.lose_message not in self.messages and Game.win_message not in self.messages
 
     def move(self, target):
-        self.logger.debug("Moving player to %d" % target)
+        self.logger.info("Moving player to %d" % target)
         self.player_location = target
         for p in self.bat_locations:
             if p == target:
@@ -59,7 +60,7 @@ class Game(object):
             self.move_wumpus()
 
     def shoot(self, target):
-        self.logger.debug("Shooting at %d" % target)
+        self.logger.info("Shooting at %d" % target)
         if target == self.wumpus_location:
             self.messages.append("Aha! You got the wumpus!")
             self.messages.append(Game.win_message)

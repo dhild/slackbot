@@ -1,5 +1,7 @@
 import app.wumpus.db as db
+from app.wumpus.hunt import new_game
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +17,7 @@ class Processor(object):
             if "wumpus" in text.lower():
                 user_id = message.get("user")
                 channel = message["channel"]
-                logger.info("Starting to hunt the wumpus for user '%s' in channel '%s'" % (user_id, channel))
-                response = hunt_the_wumpus(user_id)
+                response = create_new_game_if_one_doesnt_exist(user_id, channel)
                 if response is not None:
                     self.slack.api_call("chat.postMessage", channel=channel, **response)
 
@@ -29,7 +30,7 @@ class Processor(object):
             if not action_id.startswith("wumpus_"):
                 logger.error("Unknown action id: " + action_id)
                 return
-
+            logger.debug("Original message: %s" % payload["message"])
             action_value = payload["actions"][0]["value"]
 
             logger.info(
@@ -40,18 +41,38 @@ class Processor(object):
                 self.slack.api_call("chat.update", channel=channel, ts=timestamp, **response)
 
 
-def hunt_the_wumpus(user_id, action_id="", action_value=None):
+def create_new_game_if_one_doesnt_exist(user_id, channel_id):
     with db.session_scope() as session:
-        game = db.find_game(session, user_id)
-        logger.debug("Game for '%s' has: player=%d, wumpus=%d, arrows=%d" % (
-            user_id, game.player_location, game.wumpus_location, game.arrows))
+        if db.does_game_exist(session, user_id, channel_id):
+            logger.info("Wumpus hunt already exists for user '%s' in channel '%s'" % (user_id, channel_id))
+            return
+        logger.info("Starting to hunt the wumpus for user '%s' in channel '%s'" % (user_id, channel_id))
+        game = new_game(user_id)
+        db.save_game(session, game)
+        session.commit()  # Game must be committed before the ID is valid
+        return create_payload(game, False)
+
+
+re_action = re.compile("(?P<game_id>[^:]*):(?P<value>.*)")
+
+
+def hunt_the_wumpus(user_id, action_id, action_value):
+    with db.session_scope() as session:
+        match = re_action.match(action_value)
+        game = db.find_game(session, user_id, match.group('game_id'))
+        if game is None:
+            logger.error("Could not find game for user '%s' and game_id %s" % (user_id, match.group('game_id')))
+            return
+
+        logger.debug("Game '%s' has: player=%d, wumpus=%d, arrows=%d" % (
+            game.db_game.id, game.player_location, game.wumpus_location, game.arrows))
 
         if action_id.startswith("wumpus_move_"):
-            target = int(action_value)
+            target = int(match.group('value'))
             game.move(target)
 
         if action_id.startswith("wumpus_shoot_"):
-            target = int(action_value)
+            target = int(match.group('value'))
             game.shoot(target)
 
         db.save_game(session, game)
@@ -71,37 +92,38 @@ def create_payload(game, show_instructions):
     }
     blocks = [header]
 
-    if show_instructions:
-        header["accessory"] = {
-            "type": "button",
-            "text": {
-                "type": "plain_text",
-                "text": "Hide Instructions",
-                "emoji": False
-            },
-            "action_id": "wumpus_hide_instructions",
-            "value": "dummy"
-        }
-        blocks.append({
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": instructions
+    if game.should_continue():
+        if show_instructions:
+            header["accessory"] = {
+                "type": "button",
+                "text": {
+                    "type": "plain_text",
+                    "text": "Hide Instructions",
+                    "emoji": False
+                },
+                "action_id": "wumpus_hide_instructions",
+                "value": "%d:" % game.db_game.id
             }
-        })
-    else:
-        header["accessory"] = {
-            "type": "button",
-            "text": {
-                "type": "plain_text",
-                "text": "Show Instructions",
-                "emoji": False
-            },
-            "action_id": "wumpus_show_instructions",
-            "value": "dummy"
-        }
+            blocks.append({
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": instructions
+                }
+            })
+        else:
+            header["accessory"] = {
+                "type": "button",
+                "text": {
+                    "type": "plain_text",
+                    "text": "Show Instructions",
+                    "emoji": False
+                },
+                "action_id": "wumpus_show_instructions",
+                "value": "%d:" % game.db_game.id
+            }
 
-    for m in game.messages:
+    for m in game.presentation_messages():
         blocks.append({
             "type": "section",
             "text": {
@@ -123,7 +145,7 @@ def create_payload(game, show_instructions):
                     "emoji": False
                 },
                 "action_id": "wumpus_move_%d" % x,
-                "value": "%d" % x
+                "value": "%d:%d" % (game.db_game.id, x)
             })
             shoots.append({
                 "type": "button",
@@ -133,7 +155,7 @@ def create_payload(game, show_instructions):
                     "emoji": False
                 },
                 "action_id": "wumpus_shoot_%d" % x,
-                "value": "%d" % x
+                "value": "%d:%d" % (game.db_game.id, x)
             })
         blocks.append({
             "type": "actions",

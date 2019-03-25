@@ -1,7 +1,7 @@
 import os
 from sqlalchemy.orm import sessionmaker, relationship, selectinload
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, and_
 from contextlib import contextmanager
 import app.wumpus.hunt
 
@@ -15,6 +15,7 @@ class Game(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(String)
+    channel_id = Column(String)
     start_time = Column(DateTime)
     state = Column(Integer)
     player_location = Column(Integer)
@@ -75,14 +76,23 @@ def session_scope():
         session.close()
 
 
-def find_game(session, user_id):
+def does_game_exist(session, user_id, channel_id):
     game = session.query(Game). \
         options(selectinload(Game.pits)). \
         options(selectinload(Game.bats)). \
-        filter(Game.user_id == user_id). \
+        filter(and_(Game.user_id == user_id, Game.channel_id == channel_id)). \
+        one_or_none()
+    return game is not None
+
+
+def find_game(session, user_id, game_id):
+    game = session.query(Game). \
+        options(selectinload(Game.pits)). \
+        options(selectinload(Game.bats)). \
+        filter(and_(Game.user_id == user_id, Game.id == game_id)). \
         one_or_none()
     if game is None:
-        return app.wumpus.hunt.new_game(user_id)
+        return
     bat_locations = map(lambda x: x.location, game.bats)
     pit_locations = map(lambda x: x.location, game.pits)
     wh = app.wumpus.hunt.Game(username=user_id, player_location=game.player_location,
