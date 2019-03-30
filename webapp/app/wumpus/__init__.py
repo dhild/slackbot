@@ -15,7 +15,7 @@ class Processor(object):
         if params is not None:
             response = create_new_game_if_one_doesnt_exist(**params)
             if response is not None:
-                self.slack.api_call("chat.postMessage", channel=params["channel"], **response)
+                self.slack.api_call("chat.postMessage", channel=params["channel_id"], **response)
 
     def interaction_handler(self, payload):
         if payload["type"] == "block_actions":
@@ -42,10 +42,15 @@ class Processor(object):
         if message.get("subtype") is None:
             text = message["text"].lower()
             if "wumpus" in text:
-                if "play" in text or message["type"] == "app_mention":
+                if "play" in text or message.get("type") == "app_mention":
                     return {
                         "user_id": message["user"],
-                        "channel": message["channel"]
+                        "channel_id": message["channel"]
+                    }
+                if message.get("type") == "message" and message.get("channel_type") == "im":
+                    return {
+                        "user_id": message["user"],
+                        "channel_id": message["channel"]
                     }
 
 
