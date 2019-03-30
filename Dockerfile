@@ -1,13 +1,8 @@
-#Grab the latest alpine image
-FROM python:3.7-alpine
+#Grab the latest spacey image
+FROM quay.io/rhild/spacey-python
 
-# Install python and pip
-RUN apk add --no-cache --update bash musl-dev linux-headers g++ && pip3 install --upgrade pip
-
-# Install spacy separately because it takes forever:
-RUN pip3 install --no-cache-dir spacy>=2.0.18 && python -m spacy download en
-
-RUN apk add --no-cache --update postgresql-dev
+# Install pip, build, and runtime dependencies
+RUN apk add --no-cache --update bash musl-dev linux-headers g++ postgresql-dev && pip3 install --upgrade pip
 
 # Now install the rest of the dependencies:
 ADD ./webapp/requirements.txt /tmp/requirements.txt
@@ -16,9 +11,6 @@ RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 # Add our code
 ADD ./webapp /opt/webapp/
 WORKDIR /opt/webapp
-
-# Expose is NOT supported by Heroku
-# EXPOSE 5000
 
 # Run the image as a non-root user
 RUN adduser -D slackbot
