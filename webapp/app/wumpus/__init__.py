@@ -18,6 +18,13 @@ class Processor(object):
                 self.slack.api_call("chat.postMessage", channel=params["channel_id"], **response)
 
     def interaction_handler(self, payload):
+        """
+        Continues a game of Hunt the Wumpus using interaction buttons.
+
+        If the game is to continue, the message triggering the interaction is updated with the new state.
+
+        :param payload: The interaction payload from slack.
+        """
         if payload["type"] == "block_actions":
             channel = payload["channel"]["id"]
             timestamp = payload["message"]["ts"]
@@ -38,10 +45,24 @@ class Processor(object):
 
     @staticmethod
     def get_start_params(event_data):
+        """
+        Detects when to start a game of Hunt the Wumpus.
+
+        Possible triggers:
+        - User in a channel:
+          1. Can I play Hunt the Wumpus?
+          2. I want to play hunt the wumpus!
+          3. @<bot name> - let's hunt the wumpus!
+        - User in a DM:
+          1. I want to hunt the wumpus!
+
+        :param event_data: The event payload from slack.
+        :return: The parameters to start a new game, or None.
+        """
         message = event_data["event"]
         if message.get("subtype") is None:
             text = message["text"].lower()
-            if "wumpus" in text:
+            if "hunt the wumpus" in text:
                 if "play" in text or message.get("type") == "app_mention":
                     return {
                         "user_id": message["user"],
