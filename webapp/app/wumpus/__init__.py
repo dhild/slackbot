@@ -39,7 +39,7 @@ class Processor(object):
     @staticmethod
     def get_start_params(event_data):
         message = event_data["event"]
-        if message["subtype"] is None:
+        if message.get("subtype") is None:
             text = message["text"].lower()
             if "wumpus" in text:
                 if "play" in text or message["type"] == "app_mention":
