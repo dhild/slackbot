@@ -11,15 +11,11 @@ class Processor(object):
         self.slack = slack
 
     def event_handler(self, event_data):
-        message = event_data["event"]
-        if message.get("subtype") is None:
-            text = message.get("text")
-            if "wumpus" in text.lower():
-                user_id = message.get("user")
-                channel = message["channel"]
-                response = create_new_game_if_one_doesnt_exist(user_id, channel)
-                if response is not None:
-                    self.slack.api_call("chat.postMessage", channel=channel, **response)
+        params = self.get_start_params(event_data)
+        if params is not None:
+            response = create_new_game_if_one_doesnt_exist(**params)
+            if response is not None:
+                self.slack.api_call("chat.postMessage", channel=params["channel"], **response)
 
     def interaction_handler(self, payload):
         if payload["type"] == "block_actions":
@@ -39,6 +35,18 @@ class Processor(object):
             if response is not None:
                 logger.debug("Updating message with: %s" % response)
                 self.slack.api_call("chat.update", channel=channel, ts=timestamp, **response)
+
+    @staticmethod
+    def get_start_params(event_data):
+        message = event_data["event"]
+        if message["subtype"] is None:
+            text = message["text"].lower()
+            if "wumpus" in text:
+                if "play" in text or message["type"] == "app_mention":
+                    return {
+                        "user_id": message["user"],
+                        "channel": message["channel"]
+                    }
 
 
 def create_new_game_if_one_doesnt_exist(user_id, channel_id):
