@@ -3,11 +3,11 @@ import random
 from string import Template
 
 intros = ["Get this...", "Believe it or not,", "Fun fact,", "You know,"]
-locations = ["DC", "Seattle", "LA", "Florida"]
+locations = ["DC", "Seattle", "LA", "Florida", "Miami", "Las Vegas"]
 places = ["bar", "restaurant", "club", "museum", "party"]
-events = ["my brother's wedding", "a conference", "a Bat Mitzvah"]
+events = ["my brother's wedding", "a conference", "a Bat Mitzvah", "my brother's bachelor party"]
 drinks = ["beers", "cocktails", "wine", "milkshakes"]
-people = ["Jay-Z", "Mike Myers", "Buckethead"]
+people = ["Jay-Z", "Mike Myers", "Buckethead", "Nick Carter", "John Singleton", "Meghan Markle", "Neil Degrasse Tyson"]
 bands = ["Led Zeppelin", "Primus"]
 experiences = ["went to school together", "attended the same temple"]
 
