@@ -1,4 +1,22 @@
 import spacy
+import random
+from string import Template
+
+intros = ["Get this...", "Believe it or not,", "Fun fact,", "You know,"]
+locations = ["DC", "Seattle", "LA", "Florida"]
+places = ["bar", "restaurant", "club", "museum", "party"]
+events = ["my brother's wedding", "a conference", "a Bat Mitzvah"]
+drinks = ["beers", "cocktails", "wine", "milkshakes"]
+people = ["Jay-Z", "Mike Myers", "Buckethead"]
+bands = ["Led Zeppelin", "Primus"]
+experiences = ["went to school together", "attended the same temple"]
+
+templates = [
+    Template('$intro last time I was in $location, I bumped into $name at a $place'),
+    Template('$intro I had $drink with $name at $event in $location'),
+    Template('$intro $name and I $experience growing up'),
+    Template('$intro I once hung out with $name and $person backstage at $band show')
+]
 
 
 class MessageProcessor:
@@ -21,7 +39,17 @@ class MessageProcessor:
 
 class CasualReferencer:
     def __call__(self, *args, **kwargs):
-        return "You know, I actually met %s at a party once" % args[0]
+        t = random.choice(templates)
+        return t.substitute(
+            name=args[0],
+            intro=random.choice(intros),
+            location=random.choice(locations),
+            place=random.choice(places),
+            event=random.choice(events),
+            drink=random.choice(drinks),
+            person=random.choice(people),
+            band=random.choice(bands),
+            experience=random.choice(experiences))
 
 
 class PersonFinder:
